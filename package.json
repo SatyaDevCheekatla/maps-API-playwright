@@ -1,0 +1,46 @@
+{
+  "name": "maps-api-playwright-framework",
+  "version": "1.0.0",
+  "description": "Enterprise-grade Google Maps API automation framework built with Playwright, TypeScript, and Allure Reporting",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test tests/smoke.spec.ts",
+    "test:regression": "playwright test tests/regression.spec.ts",
+    "test:ci": "playwright test --reporter=line,allure-playwright",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"config/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"config/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"config/**/*.ts\"",
+    "clean": "node -e \"const fs = require('fs'); ['test-results', 'allure-results', 'allure-report'].forEach(d => fs.rmSync(d, { recursive: true, force: true }));\""
+  },
+  "keywords": [
+    "playwright",
+    "typescript",
+    "api-testing",
+    "allure-report",
+    "sdet",
+    "maps-api"
+  ],
+  "author": "SDET Team",
+  "license": "ISC",
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "allure-js-commons": "^3.0.7",
+    "allure-playwright": "^3.0.7",
+    "dotenv": "^16.4.7",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^8.57.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}
