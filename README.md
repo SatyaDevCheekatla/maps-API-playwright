@@ -6,11 +6,35 @@
 [![Allure Report](https://img.shields.io/badge/Allure-v3-orange.svg)](https://allurereport.org/)
 [![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://prettier.io)
 
-An enterprise-grade, robust, and maintainable API automation framework designed for high scalability, parallel execution, and continuous integration. Migrated from a legacy Java / REST Assured / Cucumber / ExtentReports architecture to modern **Playwright**, **TypeScript (Strict Mode)**, **Ajv Schema Validation**, and **Allure Reporting**.
+An enterprise-grade, robust, and maintainable API automation framework designed for high scalability, parallel execution, and continuous integration. This project is built around Google Maps APIs and follows a clean layered architecture using Playwright, TypeScript, structured logging, runtime config validation, and rich Allure reporting.
+
+The framework is intentionally built to model real-world automation practices: low coupling, strong typing, isolated test execution, schema-based validation, and traceable reporting for every API interaction.
+
+---
+
+## At a Glance
+
+- Purpose: End-to-end validation of the Google Maps Place lifecycle
+- Core workflow: Add Place -> Update Place -> Delete Place
+- Execution model: Playwright test runner with custom fixtures and DI-style dependency wiring
+- Validation: JSON schema checks using Ajv + response assertions
+- Reporting: Allure dashboard with attachments and timing metrics
+- Quality gates: TypeScript strict mode, ESLint, Prettier, and CI pipeline checks
+
+## Why This Framework Exists
+
+This repository demonstrates how to automate REST API workflows in a way that is:
+
+- Reliable across repeated runs
+- Safe for parallel execution
+- Easy to extend for new endpoints or features
+- Maintainable thanks to typed models and service-based abstractions
+- Traceable during CI and debugging with correlation IDs and logs
 
 ---
 
 ## Table of Contents
+
 1. [Framework Architectural Overview](#1-framework-architectural-overview)
 2. [The Interlinked 3-API Workflow](#2-the-interlinked-3-api-workflow)
 3. [Complete Folder and File Structure](#3-complete-folder-and-file-structure)
@@ -29,6 +53,7 @@ An enterprise-grade, robust, and maintainable API automation framework designed 
    - [Execution Scripts (`scripts/`)](#l-execution-scripts-scripts)
 5. [Configuring in Visual Studio Code (VS Code)](#5-configuring-in-visual-studio-code-vs-code)
 6. [Commands to Run the Framework](#6-commands-to-run-the-framework)
+7. [Sample Allure Dashboard](#sample-allure-dashboard)
 
 ---
 
@@ -75,8 +100,9 @@ flowchart TD
 ```
 
 ### Core Architecture Principles:
+
 - **Zero Global Mutable State**: No static Singletons (`ScenarioContext`) or `ThreadLocal` storage. Every test runs in complete isolation.
-- **Pure Dependency Injection**: Test classes declare what they require (`addPlaceService`, `updatePlaceService`, `deletePlaceService`, `validator`), and Playwright's `test.extend()` provisions them.
+- **Pure Dependency Injection**: Test classes declare what they require (`addPlaceService`, `updatePlaceService`, `deletePlaceService`, `validator`), and Playwright's `test.extend()` provisions them cleanly.
 - **Transport Separation**: Services do not construct raw HTTP requests or headers. All network operations pass through [`ApiClient`](src/clients/api-client.ts).
 - **Automated Observability**: Every request has an ISO timestamp, latency in ms, correlation ID (`X-Correlation-ID`), and automatic masking of secrets (`?key=***REDACTED***`).
 - **Strict Typing**: 100% strict TypeScript. No `any` types; all request payloads and response bodies have TypeScript interfaces.
@@ -112,6 +138,8 @@ sequenceDiagram
 1. **`AddPlace API`**: Creates a location entry on the server. The response payload returns a unique `place_id`.
 2. **`UpdatePlace API`**: Consumes the `place_id` produced in Step 1 to update the street address.
 3. **`DeletePlace API`**: Consumes the same `place_id` to purge the record from the server, completing the lifecycle and ensuring zero leftover test data.
+
+This chained flow is the heart of the framework and is the pattern used in both smoke and regression testing.
 
 ---
 
@@ -179,7 +207,10 @@ Playwright-Maps-API/
 ├── package.json                       # Dependencies, metadata & script commands
 ├── playwright.config.ts               # Playwright test runner configuration
 ├── README.md                          # Comprehensive framework documentation
-└── tsconfig.json                      # TypeScript strict compiler configuration
+├── tsconfig.json                      # TypeScript strict compiler configuration
+└── docs/
+    └── images/
+        └── allure-report-dashboard.svg # Report dashboard preview
 ```
 
 ---
@@ -371,9 +402,9 @@ Playwright-Maps-API/
 - **Class/Suite**: `Maps API - Smoke Test Suite`
 - **Test Case**: `SMOKE-001: End-to-End Interlinked Workflow (AddPlace -> UpdatePlace -> DeletePlace)`
 - **Behavior**:
-  - Calls `AddPlace API` $\rightarrow$ verifies 200, checks schema, extracts `place_id`.
-  - Calls `UpdatePlace API` using extracted `place_id` $\rightarrow$ verifies address updated message.
-  - Calls `DeletePlace API` using extracted `place_id` $\rightarrow$ verifies status `"OK"`.
+  - Calls `AddPlace API` -> verifies 200, checks schema, extracts `place_id`.
+  - Calls `UpdatePlace API` using extracted `place_id` -> verifies address updated message.
+  - Calls `DeletePlace API` using extracted `place_id` -> verifies status `"OK"`.
 
 #### `tests/regression.spec.ts` (Regression Test Suite)
 - **Class/Suite**: `Maps API - Regression Test Suite`
@@ -386,9 +417,9 @@ Playwright-Maps-API/
   2. **Data-Driven 3-API Chains**:
      - Parameterized execution across French, Japanese, and US locale datasets.
   3. **Negative Edge Cases**:
-     - Update Place with invalid ID $\rightarrow$ `404 Not Found`.
-     - Delete Place with invalid ID $\rightarrow$ `404 Not Found`.
-     - Delete Place with empty string `""` ID $\rightarrow$ `404 Not Found`.
+     - Update Place with invalid ID -> `404 Not Found`.
+     - Delete Place with invalid ID -> `404 Not Found`.
+     - Delete Place with empty string `""` ID -> `404 Not Found`.
 
 ---
 
@@ -498,3 +529,27 @@ npx allure generate allure-results --clean -o allure-report
 # 3. Open the Allure Report in your default browser
 npx allure open allure-report
 ```
+
+---
+
+## Sample Allure Dashboard
+
+The framework produces a clean, readable Allure dashboard that summarizes suite outcomes, grouped test results, and execution status. This dashboard makes it easy to interpret pass/fail quality at a glance in CI and local runs.
+
+![Allure Report Dashboard](docs/images/allure-report-dashboard.svg)
+
+This report view is useful for:
+
+- Checking overall suite health at a glance
+- Identifying failed or flaky tests quickly
+- Reviewing API execution flow and assertions
+- Comparing smoke vs regression runs with structured reporting
+- Sharing execution quality with stakeholders or QA teams
+
+---
+
+## Summary
+
+This repository is a practical enterprise-style Playwright framework for Google Maps API validation. It combines typed models, service-oriented layers, strict configuration, schema validation, immediate observability, and polished reporting to create a test automation approach that is both scalable and easy to understand.
+
+Whether you are running smoke validation in a local environment or executing a CI pipeline with generated reports, the framework is designed to provide clarity, consistency, and maintainability from the very first test to the final report.
