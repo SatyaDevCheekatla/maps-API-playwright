@@ -6,7 +6,7 @@
 [![Allure Report](https://img.shields.io/badge/Allure-v3-orange.svg)](https://allurereport.org/)
 [![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://prettier.io)
 
-An enterprise-grade, robust, and maintainable API automation framework designed for high scalability, parallel execution, and continuous integration. This project is built around Google Maps APIs and follows a clean layered architecture using Playwright, TypeScript, structured logging, runtime config validation, and rich Allure reporting.
+An enterprise-grade, robust, and maintainable API automation framework designed for high scalability, parallel execution, and continuous integration. This project is built around Google Maps APIs and is purpose-built for validating the complete place lifecycle with deterministic, repeatable automation.
 
 The framework is intentionally built to model real-world automation practices: low coupling, strong typing, isolated test execution, schema-based validation, and traceable reporting for every API interaction.
 
@@ -60,49 +60,75 @@ This repository demonstrates how to automate REST API workflows in a way that is
 ## 1. Framework Architectural Overview
 
 ```mermaid
-flowchart TD
-    subgraph Test_Layer ["Test Suites (tests/)"]
-        Smoke["smoke.spec.ts<br/>(Chained Smoke Flow)"]
-        Regression["regression.spec.ts<br/>(Serial, Data-Driven & Negative)"]
+flowchart LR
+    classDef test fill:#122131,stroke:#5ec4ff,color:#eaf8ff,stroke-width:1px;
+    classDef fixture fill:#1a2433,stroke:#7dd3fc,color:#e0f2fe,stroke-width:1px;
+    classDef service fill:#162a2a,stroke:#39d98a,color:#dffcf0,stroke-width:1px;
+    classDef transport fill:#231e1d,stroke:#ffb86c,color:#fff0dd,stroke-width:1px;
+    classDef external fill:#231d2d,stroke:#d9a5ff,color:#f6e9ff,stroke-width:1px;
+
+    subgraph TestLayer["Test Layer"]
+        Smoke["smoke.spec.ts<br/>Chained smoke flow"]
+        Regression["regression.spec.ts<br/>Serial, data-driven & negative tests"]
     end
 
-    subgraph Fixture_Layer ["Playwright Custom Fixtures (src/fixtures/custom-fixtures.ts)"]
-        F_Config["config"]
-        F_Logger["logger (Pino + Correlation ID)"]
-        F_Client["apiClient (APIRequestContext)"]
-        F_Add["addPlaceService"]
-        F_Update["updatePlaceService"]
-        F_Delete["deletePlaceService"]
-        F_Validator["validator (Ajv)"]
+    subgraph FixtureLayer["Playwright Fixtures"]
+        Config["config"]
+        Logger["logger<br/>Pino + correlation ID"]
+        Client["apiClient<br/>APIRequestContext"]
+        AddSvc["addPlaceService"]
+        UpdateSvc["updatePlaceService"]
+        DeleteSvc["deletePlaceService"]
+        Validator["validator<br/>Ajv"]
     end
 
-    subgraph Service_Layer ["Dedicated API Services (src/services/maps/)"]
-        AddSvc["AddPlaceService<br/>POST /maps/api/place/add/json"]
-        UpdateSvc["UpdatePlaceService<br/>PUT /maps/api/place/update/json"]
-        DeleteSvc["DeletePlaceService<br/>POST /maps/api/place/delete/json"]
+    subgraph ServiceLayer["Domain Services"]
+        Add["AddPlaceService<br/>POST /maps/api/place/add/json"]
+        Update["UpdatePlaceService<br/>PUT /maps/api/place/update/json"]
+        Delete["DeletePlaceService<br/>POST /maps/api/place/delete/json"]
     end
 
-    subgraph Transport_Layer ["Transport Client (src/clients/api-client.ts)"]
+    subgraph TransportLayer["Transport & Reporting"]
         ApiClient["ApiClient"]
-        Timer["Latency Stopwatch"]
-        Redactor["Sensitive Data Redactor"]
-        AllureAttacher["Allure Report Attacher"]
+        Timer["Latency stopwatch"]
+        Redactor["Sensitive data redactor"]
+        Allure["Allure report attacher"]
     end
 
-    subgraph External_API ["Google Maps API Server"]
-        MapsAPI["https://rahulshettyacademy.com"]
+    subgraph ExternalLayer["Google Maps API"]
+        Maps["https://rahulshettyacademy.com"]
     end
 
-    Smoke & Regression --> Fixture_Layer
-    Fixture_Layer --> Service_Layer
-    Service_Layer --> Transport_Layer
-    Transport_Layer --> External_API
+    Smoke --> Config
+    Regression --> Config
+    Config --> Logger
+    Logger --> Client
+    Client --> AddSvc
+    Client --> UpdateSvc
+    Client --> DeleteSvc
+    Client --> Validator
+    AddSvc --> Add
+    UpdateSvc --> Update
+    DeleteSvc --> Delete
+    Add --> ApiClient
+    Update --> ApiClient
+    Delete --> ApiClient
+    ApiClient --> Timer
+    ApiClient --> Redactor
+    ApiClient --> Allure
+    ApiClient --> Maps
+
+    class Smoke,Regression test;
+    class Config,Logger,Client,AddSvc,UpdateSvc,DeleteSvc,Validator fixture;
+    class Add,Update,Delete service;
+    class ApiClient,Timer,Redactor,Allure transport;
+    class Maps external;
 ```
 
 ### Core Architecture Principles:
 
 - **Zero Global Mutable State**: No static Singletons (`ScenarioContext`) or `ThreadLocal` storage. Every test runs in complete isolation.
-- **Pure Dependency Injection**: Test classes declare what they require (`addPlaceService`, `updatePlaceService`, `deletePlaceService`, `validator`), and Playwright's `test.extend()` provisions them cleanly.
+- **Pure Dependency Injection**: Test classes declare what they require (`addPlaceService`, `updatePlaceService`, `deletePlaceService`, `validator`), and Playwright's `test.extend()` provisions them at runtime.
 - **Transport Separation**: Services do not construct raw HTTP requests or headers. All network operations pass through [`ApiClient`](src/clients/api-client.ts).
 - **Automated Observability**: Every request has an ISO timestamp, latency in ms, correlation ID (`X-Correlation-ID`), and automatic masking of secrets (`?key=***REDACTED***`).
 - **Strict Typing**: 100% strict TypeScript. No `any` types; all request payloads and response bodies have TypeScript interfaces.
@@ -116,23 +142,25 @@ The framework centers on three tightly coupled, sequential APIs:
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Test as Test Execution
-    participant Add as AddPlace API (POST)
-    participant Upd as UpdatePlace API (PUT)
-    participant Del as DeletePlace API (POST)
+    actor Tester as Test Execution
+    participant Add as AddPlace API
+    participant Update as UpdatePlace API
+    participant Delete as DeletePlace API
 
-    Note over Test,Del: Step 1: Add Place
-    Test->>Add: POST /maps/api/place/add/json?key=***
-    Add-->>Test: 200 OK + { place_id: "a1b2c3d4e5", status: "OK" }
-    Note over Test: Capture generated place_id
+    Note over Tester,Delete: Step 1: Add Place
+    Tester->>Add: POST /maps/api/place/add/json?key=***
+    Add-->>Tester: 200 OK + { place_id, status: "OK" }
+    Note over Tester: Capture generated place_id
 
-    Note over Test,Del: Step 2: Update Place (Chained)
-    Test->>Upd: PUT /maps/api/place/update/json?key=***<br/>Body: { place_id: "a1b2c3d4e5", address: "New Address" }
-    Upd-->>Test: 200 OK + { msg: "Address successfully updated" }
+    Note over Tester,Delete: Step 2: Update Place (Chained)
+    Tester->>Update: PUT /maps/api/place/update/json?key=***
+    Note right of Update: Body includes place_id + new address
+    Update-->>Tester: 200 OK + { msg: "Address successfully updated" }
 
-    Note over Test,Del: Step 3: Delete Place (Chained)
-    Test->>Del: POST /maps/api/place/delete/json?key=***<br/>Body: { place_id: "a1b2c3d4e5" }
-    Del-->>Test: 200 OK + { status: "OK" }
+    Note over Tester,Delete: Step 3: Delete Place (Chained)
+    Tester->>Delete: POST /maps/api/place/delete/json?key=***
+    Note right of Delete: Body includes same place_id
+    Delete-->>Tester: 200 OK + { status: "OK" }
 ```
 
 1. **`AddPlace API`**: Creates a location entry on the server. The response payload returns a unique `place_id`.
@@ -534,7 +562,7 @@ npx allure open allure-report
 
 ## Sample Allure Dashboard
 
-The framework produces a clean, readable Allure dashboard that summarizes suite outcomes, grouped test results, and execution status. This dashboard makes it easy to interpret pass/fail quality at a glance in CI and local runs.
+The framework produces a clean, readable Allure dashboard that summarizes suite outcomes, grouped test results, and execution status. This dashboard makes it easy to interpret pass/fail quality at a glance.
 
 ![Allure Report Dashboard](docs/images/allure-report-dashboard.svg)
 
@@ -550,6 +578,6 @@ This report view is useful for:
 
 ## Summary
 
-This repository is a practical enterprise-style Playwright framework for Google Maps API validation. It combines typed models, service-oriented layers, strict configuration, schema validation, immediate observability, and polished reporting to create a test automation approach that is both scalable and easy to understand.
+This repository is a practical enterprise-style Playwright framework for Google Maps API validation. It combines typed models, service-oriented layers, strict configuration, schema validation, immediate observability, and rich CI reporting into a single, maintainable automated solution.
 
-Whether you are running smoke validation in a local environment or executing a CI pipeline with generated reports, the framework is designed to provide clarity, consistency, and maintainability from the very first test to the final report.
+Whether you are running smoke validation in a local environment or executing a CI pipeline with generated reports, the framework is designed to provide clarity, consistency, and maintainability from the first test to the final report.
