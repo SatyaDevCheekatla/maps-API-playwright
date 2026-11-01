@@ -564,7 +564,7 @@ npx allure open allure-report
 
 The framework produces a clean, readable Allure dashboard that summarizes suite outcomes, grouped test results, and execution status. This dashboard makes it easy to interpret pass/fail quality at a glance.
 
-![Allure Report Dashboard](docs/images/allure-report-dashboard.svg)
+![Allure Report Dashboard] <img width="1920" height="1140" alt="Screenshot 2026-11-01 225654" src="https://github.com/user-attachments/assets/d0a25842-0eee-4cc1-a0ae-8eb4c58773e8" />
 
 This report view is useful for:
 
