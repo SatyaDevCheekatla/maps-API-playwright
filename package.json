@@ -7,12 +7,14 @@
     "test": "playwright test",
     "test:smoke": "playwright test tests/smoke.spec.ts",
     "test:regression": "playwright test tests/regression.spec.ts",
-    "test:ci": "playwright test --reporter=line,allure-playwright",
+    "test:ci": "playwright test --reporter=line,allure-playwright,./src/reporters/emailable-reporter.ts",
+    "report:emailable": "node scripts/generate-emailable-report.js",
+    "report:open": "node -e \"const { exec } = require('child_process'); exec('start reports/emailable-report.html');\"",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"config/**/*.ts\"",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"config/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"config/**/*.ts\"",
-    "clean": "node -e \"const fs = require('fs'); ['test-results', 'allure-results', 'allure-report'].forEach(d => fs.rmSync(d, { recursive: true, force: true }));\""
+    "clean": "node -e \"const fs = require('fs'); ['test-results', 'allure-results', 'allure-report', 'reports'].forEach(d => fs.rmSync(d, { recursive: true, force: true }));\""
   },
   "keywords": [
     "playwright",

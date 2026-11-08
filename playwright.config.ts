@@ -37,6 +37,7 @@ export default defineConfig({
         },
       },
     ],
+    ['./src/reporters/emailable-reporter.ts'],
   ],
   use: {
     baseURL,

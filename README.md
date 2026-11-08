@@ -128,7 +128,11 @@ Playwright-Maps-API/
 │   └── settings.json                  # VS Code formatting, ESLint & test settings
 ├── config/
 │   └── config.ts                      # Zod-validated environment config & secret redactor
+├── reports/
+│   ├── emailable-report.html          # Self-contained emailable HTML report (100% offline, zero CORS)
+│   └── index.html                     # Web-ready mirror of emailable report
 ├── scripts/
+│   ├── generate-emailable-report.js   # Standalone HTML report generator script
 │   ├── run-npm.cmd                    # Windows CMD helper for npm execution
 │   ├── run-npx.cmd                    # Windows CMD helper for npx execution
 │   └── run-tests.ps1                  # PowerShell helper for running suites
@@ -158,6 +162,8 @@ Playwright-Maps-API/
 │   │   ├── responses/
 │   │   │   └── maps-responses.model.ts# Typed response DTOs
 │   │   └── index.ts                   # Models barrel export
+│   ├── reporters/
+│   │   └── emailable-reporter.ts      # Custom Playwright reporter generating emailable HTML
 │   ├── services/
 │   │   ├── maps/
 │   │   │   ├── add-place.service.ts   # Dedicated service for Add Place API
@@ -484,9 +490,31 @@ All commands can be executed from the terminal in the project root:
 | `npm run format:check` | **Check Formatting** | Verifies code conforms to formatting standards |
 | `npm run clean` | **Clean Artifacts** | Purges `test-results/`, `allure-results/`, and `allure-report/` |
 
-### D. Allure Reporting Commands
+### D. Emailable Report Commands (100% Offline & Shareable)
 
-To generate and inspect interactive HTML reports with attached HTTP request/response metrics:
+The framework includes a standalone, self-contained single-file HTML reporter that can be emailed as an attachment or opened directly by double-clicking in Windows Explorer. It has **zero external CSS/JS/fonts**, **zero CORS restrictions**, and requires **no web server**:
+
+| Command | Action | Description |
+| :--- | :--- | :--- |
+| `npm run report:emailable` | **Generate Emailable Report** | Generates standalone HTML report with latest run data under `reports/` |
+| `npm run report:open` | **Open Report in Browser** | Opens `reports/emailable-report.html` directly in your default browser |
+
+```powershell
+# Generate emailable report from latest run
+npm run report:emailable
+
+# Open the emailable report directly in default browser
+npm run report:open
+
+# PowerShell helper with auto-open
+.\scripts\run-tests.ps1 -OpenReport
+```
+
+> **Email Attachment Guide**: To share with stakeholders or attach to CI emails, simply attach the single file located at `reports/emailable-report.html`. The recipient can double-click it in Windows Explorer or open it in any desktop/mobile browser to view the interactive test execution summary, metrics donut chart, suite breakdowns, and full HTTP request/response payloads without blank screen or CORS issues!
+
+### E. Standard Allure Reporting Commands
+
+To generate and inspect standard multi-page Allure reports with local web server:
 
 ```bash
 # 1. Run tests to generate fresh allure-results
@@ -495,6 +523,6 @@ npm run test:ci
 # 2. Generate the HTML report from results
 npx allure generate allure-results --clean -o allure-report
 
-# 3. Open the Allure Report in your default browser
+# 3. Open the Allure Report in your default browser (requires local server)
 npx allure open allure-report
 ```
